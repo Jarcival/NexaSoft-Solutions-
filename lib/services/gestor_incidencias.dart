@@ -4,11 +4,9 @@ import '../model/incidencia.dart';
 class GestorIncidencias {
   final AlmacenLocal datos = AlmacenLocal();
   List<Incidencia> incidencias = [];
-  
 
   Future<void> iniciar() async {
     incidencias = await datos.leer();
-    
   }
 
   List<Incidencia> buscar(String texto) {
@@ -21,6 +19,18 @@ class GestorIncidencias {
         .toList();
   }
 
+  List<Incidencia> filtrar({
+    String texto = '',
+    String estado = 'Todos',
+    String prioridad = 'Todas',
+  }) {
+    return buscar(texto)
+        .where((x) =>
+            (estado == 'Todos' || x.estado == estado) &&
+            (prioridad == 'Todas' || x.prioridad == prioridad))
+        .toList();
+  }
+
   Incidencia? porId(String id) {
     for (var x in incidencias) {
       if (x.id == id) return x;
@@ -29,7 +39,7 @@ class GestorIncidencias {
   }
 
   int contar(String estado) =>
-    incidencias.where((x) => x.estado == estado).length;
+      incidencias.where((x) => x.estado == estado).length;
 
   Future<void> cambiarEstado(String id, String estado) async {
     for (var i = 0; i < incidencias.length; i++) {
@@ -38,12 +48,18 @@ class GestorIncidencias {
         break;
       }
     }
-    //correccion
+    await datos.guardar(incidencias);
+  }
+  Future<void> cambiarPrioridad(String id, String prioridad) async {
+    if (!prioridadesValidas.contains(prioridad)) return;
+    final item = porId(id);
+    if (item == null) return;
+    item.prioridad = prioridad;
     await datos.guardar(incidencias);
   }
 
   Future<void> crear(String titulo, String descripcion, String cliente,
-      String categoria) async {
+      String categoria, {String prioridad = 'Media'}) async {
     final nuevo = Incidencia(
       id: 'INC-${DateTime.now().microsecondsSinceEpoch}',
       titulo: titulo,
@@ -52,6 +68,7 @@ class GestorIncidencias {
       categoria: categoria,
       estado: 'Pendiente',
       fecha: DateTime.now().toIso8601String().split('T').first,
+      prioridad: prioridadesValidas.contains(prioridad) ? prioridad : 'Media',
     );
     incidencias.insert(0, nuevo);
     await datos.guardar(incidencias);
